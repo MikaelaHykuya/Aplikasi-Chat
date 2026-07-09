@@ -25,6 +25,7 @@
         "android.permission.FOREGROUND_SERVICE",
         "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
       ],
+      "usesCleartextTraffic": true,
       "package": "com.alicezubberg.zentro"
     },
     "web": {
