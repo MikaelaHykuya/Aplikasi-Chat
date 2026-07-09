@@ -11,6 +11,7 @@
       "bundleIdentifier": "com.alicezubberg.zentro"
     },
     "android": {
+      "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -29,7 +30,15 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-audio",
+      [
+        "@config-plugins/react-native-webrtc",
+        {
+          "cameraPermission": "Izinkan Zentro mengakses kamera untuk panggilan video",
+          "microphonePermission": "Izinkan Zentro mengakses mikrofon untuk panggilan suara dan video"
+        }
+      ]
     ],
     "extra": {
       "eas": {

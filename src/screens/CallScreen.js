@@ -1,26 +1,118 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Image, StatusBar } from 'react-native';
+import React, { useEffect, useState, useRef } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Image, StatusBar, Alert } from 'react-native';
+import { RTCPeerConnection, RTCIceCandidate, RTCSessionDescription, RTCView, mediaDevices } from 'react-native-webrtc';
+import { Audio } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { API_URL } from '../config/api';
 import { useSocket } from '../context/SocketContext';
+import { useAuth } from '../context/AuthContext';
 
 export default function CallScreen({ route, navigation }) {
-  const { type, targetUser, direction } = route.params;
+  const { type, targetUser, direction, offer, autoAccept } = route.params;
   const { colors } = useTheme();
   const { socket } = useSocket();
+  const { user } = useAuth();
+  
+  const pc = useRef(null);
+  const [localStream, setLocalStream] = useState(null);
+  const [remoteStream, setRemoteStream] = useState(null);
+
   const [duration, setDuration] = useState(0);
   const [callActive, setCallActive] = useState(false);
   const [callEnded, setCallEnded] = useState(false);
 
   useEffect(() => {
-    if (!socket) return;
+    let currentSound;
+    async function initSound() {
+      if (direction === 'incoming' && !callActive && !callEnded && !autoAccept) {
+        try {
+          const { sound } = await Audio.Sound.createAsync(
+            { uri: 'https://actions.google.com/sounds/v1/alarms/phone_ringing.ogg' },
+            { shouldPlay: true, isLooping: true }
+          );
+          currentSound = sound;
+        } catch (e) {}
+      }
+    }
+    initSound();
+    return () => {
+      if (currentSound) currentSound.unloadAsync();
+    };
+  }, [direction, callActive, callEnded]);
 
-    if (direction === 'outgoing') {
-      socket.emit('call:offer', { targetId: targetUser?.id, type, offer: 'dummy' });
+  useEffect(() => {
+    let isSubscribed = true;
+    let localStreamRef = null;
+
+    async function startCall() {
+      try {
+        const stream = await mediaDevices.getUserMedia({
+          audio: true,
+          video: type === 'video' ? { facingMode: 'user' } : false
+        });
+        if (!isSubscribed) return;
+        setLocalStream(stream);
+        localStreamRef = stream;
+
+        const configuration = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+        const peerConnection = new RTCPeerConnection(configuration);
+        pc.current = peerConnection;
+
+        peerConnection.addStream(stream);
+
+        peerConnection.onaddstream = (event) => {
+          if (isSubscribed) setRemoteStream(event.stream);
+        };
+
+        peerConnection.onicecandidate = (event) => {
+          if (event.candidate) {
+            socket?.emit('call:candidate', { targetId: targetUser?.id, candidate: event.candidate });
+          }
+        };
+
+        if (direction === 'outgoing') {
+          const localOffer = await peerConnection.createOffer();
+          await peerConnection.setLocalDescription(localOffer);
+          socket?.emit('call:offer', { targetId: targetUser?.id, type, offer: localOffer });
+        } else if (direction === 'incoming' && autoAccept && offer) {
+          await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
+          const answer = await peerConnection.createAnswer();
+          await peerConnection.setLocalDescription(answer);
+          socket?.emit('call:answer', { callerId: targetUser?.id, answer });
+          setCallActive(true);
+        }
+      } catch (err) {
+        console.error('WebRTC Init Error:', err);
+        Alert.alert('WebRTC Error', err.toString());
+      }
     }
 
-    const onAnswered = () => setCallActive(true);
+    startCall();
+
+    return () => {
+      isSubscribed = false;
+      if (pc.current) pc.current.close();
+      if (localStreamRef) localStreamRef.getTracks().forEach(t => t.stop());
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const onAnswered = async (data) => {
+      setCallActive(true);
+      if (pc.current) {
+        await pc.current.setRemoteDescription(new RTCSessionDescription(data.answer));
+      }
+    };
+
+    const onCandidate = async (data) => {
+      if (pc.current) {
+        await pc.current.addIceCandidate(new RTCIceCandidate(data.candidate));
+      }
+    };
+
     const onEnded = () => {
       setCallActive(false);
       setCallEnded(true);
@@ -28,13 +120,15 @@ export default function CallScreen({ route, navigation }) {
     };
 
     socket.on('call:answered', onAnswered);
+    socket.on('call:candidate', onCandidate);
     socket.on('call:ended', onEnded);
 
     return () => {
       socket.off('call:answered', onAnswered);
+      socket.off('call:candidate', onCandidate);
       socket.off('call:ended', onEnded);
     };
-  }, [socket, direction, targetUser]);
+  }, [socket]);
 
   useEffect(() => {
     if (!callActive) return;
@@ -47,34 +141,59 @@ export default function CallScreen({ route, navigation }) {
     navigation.goBack();
   }
 
-  function handleAccept() {
-    socket?.emit('call:answer', { callerId: targetUser?.id, answer: true });
-    setCallActive(true);
+  async function handleAccept() {
+    if (offer && pc.current) {
+      try {
+        await pc.current.setRemoteDescription(new RTCSessionDescription(offer));
+        const answer = await pc.current.createAnswer();
+        await pc.current.setLocalDescription(answer);
+        socket?.emit('call:answer', { callerId: targetUser?.id, answer });
+        setCallActive(true);
+      } catch (err) {
+        console.error('Accept Error:', err);
+        Alert.alert('Error', err.toString());
+      }
+    }
   }
 
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#0d0d0d" />
-      <View style={styles.bg}>
-        <View style={styles.content}>
-          {targetUser?.avatar ? (
-            <Image source={{ uri: `${API_URL}${targetUser.avatar}` }} style={styles.avatar} />
-          ) : (
-            <View style={[styles.avatarPlaceholder, { backgroundColor: colors.primary }]}>
-              <Text style={styles.avatarLetter}>{(targetUser?.displayName || targetUser?.username || '?').charAt(0).toUpperCase()}</Text>
-            </View>
+      <View style={styles.videoContainer}>
+        {type === 'video' && remoteStream && (
+          <RTCView streamURL={remoteStream.toURL()} style={StyleSheet.absoluteFillObject} objectFit="cover" />
+        )}
+        {type === 'video' && localStream && (
+          <View style={styles.localVideoContainer}>
+            <RTCView streamURL={localStream.toURL()} style={StyleSheet.absoluteFillObject} objectFit="cover" />
+          </View>
+        )}
+      </View>
+      
+      <View style={[styles.bg, type === 'video' ? { backgroundColor: 'rgba(0,0,0,0.4)' } : {}]} pointerEvents="box-none">
+        <View style={styles.content} pointerEvents="none">
+          {(!callActive || type === 'voice') && (
+            <>
+              {targetUser?.avatar ? (
+                <Image source={{ uri: `${API_URL}${targetUser.avatar}` }} style={styles.avatar} />
+              ) : (
+                <View style={[styles.avatarPlaceholder, { backgroundColor: colors.primary }]}>
+                  <Text style={styles.avatarLetter}>{(targetUser?.displayName || targetUser?.username || '?').charAt(0).toUpperCase()}</Text>
+                </View>
+              )}
+              <Text style={styles.name}>{targetUser?.displayName || targetUser?.username || 'Pengguna'}</Text>
+              <Text style={styles.status}>
+                {callEnded
+                  ? 'Panggilan Berakhir'
+                  : direction === 'incoming' && !callActive && !autoAccept
+                    ? 'Panggilan masuk...'
+                    : callActive || autoAccept
+                      ? formatTime(duration)
+                      : 'Memanggil...'}
+              </Text>
+            </>
           )}
-          <Text style={styles.name}>{targetUser?.displayName || targetUser?.username || 'Pengguna'}</Text>
-          <Text style={styles.status}>
-            {callEnded
-              ? 'Panggilan Berakhir'
-              : direction === 'incoming' && !callActive
-                ? 'Panggilan masuk...'
-                : callActive
-                  ? formatTime(duration)
-                  : 'Memanggil...'}
-          </Text>
-          {type === 'video' && (
+          {type === 'video' && !callActive && !autoAccept && (
             <View style={styles.videoBadge}>
               <Ionicons name="videocam" size={16} color="#fff" />
               <Text style={styles.videoBadgeText}>Video</Text>
@@ -82,7 +201,7 @@ export default function CallScreen({ route, navigation }) {
           )}
         </View>
         <View style={styles.actions}>
-          {direction === 'incoming' && !callActive ? (
+          {direction === 'incoming' && !callActive && !autoAccept ? (
             <>
               <TouchableOpacity style={styles.rejectBtn} onPress={handleEnd}>
                 <Ionicons name="close" size={30} color="#fff" />
@@ -113,7 +232,13 @@ function formatTime(s) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0d0d0d' },
-    bg: { flex: 1, justifyContent: 'space-between', backgroundColor: '#0d0d0d' },
+  videoContainer: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, backgroundColor: '#000' },
+  localVideoContainer: {
+    width: 110, height: 150, position: 'absolute', bottom: 120, right: 20,
+    borderRadius: 12, borderWidth: 2, borderColor: 'rgba(255,255,255,0.3)',
+    overflow: 'hidden', backgroundColor: '#222', zIndex: 10
+  },
+  bg: { flex: 1, justifyContent: 'space-between', backgroundColor: '#0d0d0d' },
   content: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 32 },
   avatar: {
     width: 130, height: 130, borderRadius: 65, marginBottom: 24,
