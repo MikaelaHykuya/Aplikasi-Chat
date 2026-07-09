@@ -10,7 +10,6 @@ import { useTheme } from '../context/ThemeContext';
 import { getSettings as getSettingsApi } from '../services/api';
 import { getStorage, getCachedSettings } from '../services/storage';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { BlurView } from 'expo-blur';
 
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
@@ -210,7 +209,7 @@ function MainTabs() {
         tabBarStyle: getTabBarStyle(route, colors, mode),
         tabBarBackground: () => (
           Platform.OS === 'ios' ? (
-            <BlurView tint={mode === 'dark' ? 'dark' : 'light'} intensity={80} style={{ flex: 1 }} />
+            <View style={{ flex: 1, backgroundColor: mode === 'dark' ? 'rgba(0,0,0,0.8)' : 'rgba(255,255,255,0.8)' }} />
           ) : null
         ),
         tabBarLabelStyle: { fontSize: 11, fontWeight: '700', letterSpacing: 0.2 },
