@@ -19,6 +19,7 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "permissions": [
+        "android.permission.CAMERA",
         "android.permission.RECORD_AUDIO",
         "android.permission.MODIFY_AUDIO_SETTINGS",
         "android.permission.FOREGROUND_SERVICE",
@@ -32,11 +33,12 @@
     "plugins": [
       "expo-secure-store",
       "expo-audio",
+      "expo-build-properties",
       [
         "@config-plugins/react-native-webrtc",
         {
           "cameraPermission": "Izinkan Zentro mengakses kamera untuk panggilan video",
-          "microphonePermission": "Izinkan Zentro mengakses mikrofon untuk panggilan suara dan video"
+          "microphonePermission": "Izinkan Zentro mengakses mikrofon untuk panggilan suara"
         }
       ]
     ],

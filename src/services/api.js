@@ -8,6 +8,7 @@ async function request(endpoint, options = {}) {
   const token = await getToken();
   const headers = {
     'Content-Type': 'application/json',
+    'Bypass-Tunnel-Reminder': 'true',
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...options.headers,
   };

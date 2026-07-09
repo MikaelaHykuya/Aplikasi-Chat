@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Image, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, Image, StyleSheet, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -152,9 +152,9 @@ const styles = StyleSheet.create({
     marginBottom: 8, marginLeft: 4,
   },
   sectionCard: {
-    borderRadius: 18, overflow: 'hidden',
+    borderRadius: Platform.OS === 'ios' ? 12 : 18, overflow: 'hidden',
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06, shadowRadius: 8, elevation: 3,
+    shadowOpacity: Platform.OS === 'ios' ? 0 : 0.06, shadowRadius: 8, elevation: 3,
   },
   row: {
     flexDirection: 'row', alignItems: 'center',

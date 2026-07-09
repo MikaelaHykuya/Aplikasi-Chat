@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
-  Alert, ActivityIndicator, Image, ScrollView, StyleSheet
+  Alert, ActivityIndicator, Image, ScrollView, StyleSheet, Platform
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -9,7 +9,7 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { API_URL } from '../config/api';
 import * as ImagePicker from 'expo-image-picker';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import * as DocumentPicker from 'expo-document-picker';
 import { users as usersApi, upload as uploadApi, updateAvatar, backup as backupApi } from '../services/api';
@@ -282,9 +282,9 @@ const styles = StyleSheet.create({
   body: { flex: 1, marginTop: -16 },
   card: {
     marginHorizontal: 16, marginTop: 16,
-    borderRadius: 20, padding: 18,
+    borderRadius: Platform.OS === 'ios' ? 12 : 20, padding: 18,
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06, shadowRadius: 10, elevation: 4,
+    shadowOpacity: Platform.OS === 'ios' ? 0 : 0.06, shadowRadius: 10, elevation: 4,
   },
   cardTitle: { fontSize: 16, fontWeight: '800', marginBottom: 16, letterSpacing: -0.2 },
   infoRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8 },

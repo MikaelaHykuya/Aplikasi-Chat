@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
-  RefreshControl, TextInput, Image, Animated, Dimensions, Alert
+  RefreshControl, TextInput, Image, Animated, Dimensions, Alert, AppState
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -136,6 +136,15 @@ export default function ChatListScreen({ navigation }) {
   }
 
   useFocusEffect(useCallback(() => { loadChats(); loadPreferences(); }, []));
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', nextAppState => {
+      if (nextAppState === 'active') {
+        loadChats();
+      }
+    });
+    return () => subscription.remove();
+  }, []);
 
   useEffect(() => {
     if (!socket) return;

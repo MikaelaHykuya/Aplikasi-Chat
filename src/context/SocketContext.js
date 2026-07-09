@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
+import { AppState } from 'react-native';
 import { io } from 'socket.io-client';
 import { SOCKET_URL } from '../config/api';
 import { useAuth } from './AuthContext';
@@ -12,6 +13,15 @@ export function SocketProvider({ children }) {
   const [connected, setConnected] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState({});
   const [incomingCall, setIncomingCall] = useState(null);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', nextAppState => {
+      if (nextAppState === 'active' && socketRef.current && !socketRef.current.connected) {
+        socketRef.current.connect();
+      }
+    });
+    return () => subscription.remove();
+  }, []);
 
   useEffect(() => {
     if (!user) {
@@ -28,6 +38,9 @@ export function SocketProvider({ children }) {
       const socket = io(SOCKET_URL, {
         auth: { token },
         transports: ['websocket'],
+        extraHeaders: {
+          'Bypass-Tunnel-Reminder': 'true'
+        }
       });
 
       socket.on('connect', () => setConnected(true));

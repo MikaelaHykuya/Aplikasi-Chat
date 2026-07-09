@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   View, Text, FlatList, TextInput, TouchableOpacity, StyleSheet,
-  KeyboardAvoidingView, Platform, Alert, ActivityIndicator, Image, Modal, Linking, Dimensions, TouchableWithoutFeedback
+  KeyboardAvoidingView, Platform, Alert, ActivityIndicator, Image, Modal, Linking, Dimensions, TouchableWithoutFeedback, AppState
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import * as ImagePicker from 'expo-image-picker';
+import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
@@ -13,7 +14,7 @@ import { useTheme } from '../context/ThemeContext';
 import { chats as chatsApi, upload as uploadApi, getSettings } from '../services/api';
 import { onSettingsChange } from '../services/storage';
 import { API_URL } from '../config/api';
-
+import { triggerLight, triggerMedium, triggerSuccess } from '../utils/haptics';
 const CHAT_THEME_COLORS = {
   Hijau: { bubbleSelf: '#07C160', bubbleSelfText: '#fff' },
   Biru: { bubbleSelf: '#1a73e8', bubbleSelfText: '#fff' },
@@ -36,6 +37,23 @@ function formatDateSeparator(date) {
   if (msgDate.getTime() === yesterday.getTime()) return 'Kemarin';
   return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
 }
+
+const BlurOverlay = ({ children, style, onPress }) => {
+  if (Platform.OS === 'ios') {
+    return (
+      <BlurView intensity={25} tint="dark" style={[{ flex: 1 }, style]}>
+        <TouchableOpacity style={{ flex: 1, ...style, backgroundColor: 'transparent' }} activeOpacity={1} onPress={onPress}>
+          {children}
+        </TouchableOpacity>
+      </BlurView>
+    );
+  }
+  return (
+    <TouchableOpacity style={style} activeOpacity={1} onPress={onPress}>
+      {children}
+    </TouchableOpacity>
+  );
+};
 
 export default function ChatScreen({ route, navigation }) {
   const { chatId, chat: chatData } = route.params;
@@ -95,6 +113,13 @@ export default function ChatScreen({ route, navigation }) {
     loadMessages();
     loadChat();
     getSettings().then(setSettings).catch(() => {});
+
+    const subscription = AppState.addEventListener('change', nextAppState => {
+      if (nextAppState === 'active') {
+        loadMessages();
+      }
+    });
+    return () => subscription.remove();
   }, [chatId]);
 
   useEffect(() => {
@@ -220,6 +245,7 @@ export default function ChatScreen({ route, navigation }) {
 
   async function handleSend() {
     if (!text.trim()) return;
+    triggerLight();
     await sendMessage(text.trim());
   }
 
@@ -325,8 +351,8 @@ export default function ChatScreen({ route, navigation }) {
     };
 
     return (
-      <Modal visible={true} transparent animationType="fade" onRequestClose={() => setActionMessage(null)}>
-        <TouchableOpacity style={styles.actionModalOverlay} activeOpacity={1} onPress={() => setActionMessage(null)}>
+      <Modal visible={!!actionMessage} transparent animationType="fade" onRequestClose={() => setActionMessage(null)}>
+        <BlurOverlay style={styles.actionModalOverlay} onPress={() => setActionMessage(null)}>
           <View style={[styles.actionModalContent, { backgroundColor: colors.card }]}>
             <View style={styles.actionModalHandle} />
             <Text style={[styles.actionModalTitle, { color: colors.textSecondary }]}>Opsi Pesan</Text>
@@ -365,7 +391,7 @@ export default function ChatScreen({ route, navigation }) {
               <Ionicons name="trash-bin-outline" size={22} color="#ff3b30" /><Text style={[styles.actionBtnText, { color: '#ff3b30' }]}>Hapus untuk saya</Text>
             </TouchableOpacity>
           </View>
-        </TouchableOpacity>
+        </BlurOverlay>
       </Modal>
     );
   }
@@ -500,7 +526,7 @@ export default function ChatScreen({ route, navigation }) {
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
       >
         <View style={{ flex: 1, backgroundColor: colors.background }}>
           <LinearGradient colors={[colors.gradientStart, colors.gradientEnd]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.headerGradient}>
@@ -691,15 +717,15 @@ export default function ChatScreen({ route, navigation }) {
       </KeyboardAvoidingView>
       {renderActionModal()}
       <Modal visible={!!previewImage} transparent onRequestClose={() => setPreviewImage(null)}>
-        <TouchableOpacity style={styles.previewOverlay} activeOpacity={1} onPress={() => setPreviewImage(null)}>
+        <BlurOverlay style={styles.previewOverlay} onPress={() => setPreviewImage(null)}>
           {previewImage && (
             <Image source={{ uri: previewImage }} style={styles.previewImage} resizeMode="contain" />
           )}
-        </TouchableOpacity>
+        </BlurOverlay>
       </Modal>
 
       <Modal visible={!!reactTarget} transparent animationType="fade" onRequestClose={() => setReactTarget(null)}>
-        <TouchableOpacity style={styles.reactOverlay} activeOpacity={1} onPress={() => setReactTarget(null)}>
+        <BlurOverlay style={styles.reactOverlay} onPress={() => setReactTarget(null)}>
           <View style={[styles.reactPicker, { backgroundColor: colors.card }]}>
             {['❤️', '😂', '👍', '😮', '😢', '😡', '🔥', '👏'].map(emoji => (
               <TouchableOpacity
@@ -716,7 +742,7 @@ export default function ChatScreen({ route, navigation }) {
               </TouchableOpacity>
             ))}
           </View>
-        </TouchableOpacity>
+        </BlurOverlay>
       </Modal>
 
       <Modal visible={!!forwardMessage} transparent animationType="slide" onRequestClose={() => setForwardMessage(null)}>
@@ -876,7 +902,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center',
     paddingHorizontal: 12, paddingVertical: 8, borderTopWidth: 0,
     backgroundColor: 'rgba(255,255,255,0.9)',
-    borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    borderTopLeftRadius: Platform.OS === 'ios' ? 0 : 24, 
+    borderTopRightRadius: Platform.OS === 'ios' ? 0 : 24,
     shadowColor: '#000', shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.05, shadowRadius: 10, elevation: 10,
   },
@@ -894,11 +921,11 @@ const styles = StyleSheet.create({
   },
   attachLabel: { fontSize: 12, fontWeight: '600' },
   inputWrap: {
-    flex: 1, borderRadius: 24, marginHorizontal: 8,
+    flex: 1, borderRadius: Platform.OS === 'ios' ? 18 : 24, marginHorizontal: 8,
     borderWidth: 1.5, borderColor: '#EBEBF0',
   },
   input: {
-    paddingHorizontal: 16, paddingVertical: 10, fontSize: 15, maxHeight: 100,
+    paddingHorizontal: 16, paddingVertical: Platform.OS === 'ios' ? 8 : 10, fontSize: 15, maxHeight: 100,
   },
   inputSend: {
     width: 44, height: 44, borderRadius: 22,

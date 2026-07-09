@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { useColorScheme } from 'react-native';
+import { useColorScheme, Platform } from 'react-native';
 import { getSettings } from '../services/api';
 import { onSettingsChange, getCachedSettings } from '../services/storage';
 
@@ -114,6 +114,86 @@ const themes = {
     read: '#4ECDC4',
     delivered: '#5A5A6A',
   },
+  iosLight: {
+    background: '#F2F2F7',
+    surface: '#FFFFFF',
+    card: '#FFFFFF',
+    cardElevated: '#F2F2F7',
+    primary: '#007AFF',
+    primaryLight: '#47A1FF',
+    primaryDark: '#0055B3',
+    gradientStart: '#007AFF',
+    gradientEnd: '#34C759',
+    accentPink: '#FF2D55',
+    accentTeal: '#5AC8FA',
+    accentOrange: '#FF9500',
+    text: '#000000',
+    textSecondary: '#8E8E93',
+    textTertiary: '#C7C7CC',
+    textOnPrimary: '#FFFFFF',
+    bubbleSelf: '#007AFF',
+    bubbleSelfText: '#FFFFFF',
+    bubbleOther: '#E5E5EA',
+    bubbleOtherText: '#000000',
+    border: '#C6C6C8',
+    borderLight: '#E5E5EA',
+    separator: '#C6C6C8',
+    inputBg: '#FFFFFF',
+    inputBorder: '#C6C6C8',
+    shadow: '#000000',
+    overlay: 'rgba(0,0,0,0.4)',
+    headerBg: '#FFFFFF',
+    headerText: '#000000',
+    tabBar: '#FFFFFF',
+    tabBarBorder: '#C6C6C8',
+    tabBarActive: '#007AFF',
+    online: '#34C759',
+    danger: '#FF3B30',
+    warning: '#FFCC00',
+    success: '#34C759',
+    read: '#007AFF',
+    delivered: '#8E8E93',
+  },
+  iosDark: {
+    background: '#000000',
+    surface: '#1C1C1E',
+    card: '#1C1C1E',
+    cardElevated: '#2C2C2E',
+    primary: '#0A84FF',
+    primaryLight: '#5E5CE6',
+    primaryDark: '#0060C0',
+    gradientStart: '#0A84FF',
+    gradientEnd: '#32D74B',
+    accentPink: '#FF375F',
+    accentTeal: '#64D2FF',
+    accentOrange: '#FF9F0A',
+    text: '#FFFFFF',
+    textSecondary: '#EBEBF5',
+    textTertiary: '#8E8E93',
+    textOnPrimary: '#FFFFFF',
+    bubbleSelf: '#0A84FF',
+    bubbleSelfText: '#FFFFFF',
+    bubbleOther: '#2C2C2E',
+    bubbleOtherText: '#FFFFFF',
+    border: '#38383A',
+    borderLight: '#2C2C2E',
+    separator: '#38383A',
+    inputBg: '#1C1C1E',
+    inputBorder: '#38383A',
+    shadow: '#000000',
+    overlay: 'rgba(0,0,0,0.6)',
+    headerBg: '#1C1C1E',
+    headerText: '#FFFFFF',
+    tabBar: '#1C1C1E',
+    tabBarBorder: '#38383A',
+    tabBarActive: '#0A84FF',
+    online: '#32D74B',
+    danger: '#FF453A',
+    warning: '#FFD60A',
+    success: '#32D74B',
+    read: '#0A84FF',
+    delivered: '#8E8E93',
+  }
 };
 
 const ThemeContext = createContext(null);
@@ -137,8 +217,11 @@ export function ThemeProvider({ children }) {
   }, []);
 
   const themePref = settings.theme || 'System';
-  const mode = themePref === 'System' ? systemScheme || 'light' : themePref === 'Gelap' ? 'dark' : 'light';
-  const colors = themes[mode] || themes.light;
+  let mode = themePref === 'System' ? systemScheme || 'light' : themePref === 'Gelap' ? 'dark' : 'light';
+  
+  const isIOS = Platform.OS === 'ios';
+  const themeKey = isIOS ? `ios${mode.charAt(0).toUpperCase() + mode.slice(1)}` : mode;
+  const colors = themes[themeKey] || themes[mode] || themes.light;
 
   return (
     <ThemeContext.Provider value={{ colors, mode, settings, loaded }}>

@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { ActivityIndicator, View, Alert, AppState, Text } from 'react-native';
+import { ActivityIndicator, View, Alert, AppState, Text, Platform } from 'react-native';
 import { NavigationContainer, useNavigation, getFocusedRouteNameFromRoute } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -10,6 +10,7 @@ import { useTheme } from '../context/ThemeContext';
 import { getSettings as getSettingsApi } from '../services/api';
 import { getStorage, getCachedSettings } from '../services/storage';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { BlurView } from 'expo-blur';
 
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
@@ -143,28 +144,18 @@ function CallHandler() {
 
   useEffect(() => {
     if (!incomingCall || !socket) return;
-    Alert.alert(
-      `Panggilan ${incomingCall.type === 'video' ? 'Video' : 'Suara'} masuk`,
-      `Dari: ${incomingCall.callerDisplayName || 'Seseorang'}`,
-      [
-        { text: 'Tolak', style: 'cancel', onPress: () => {
-          socket.emit('call:end', { targetId: incomingCall.callerId });
-          setIncomingCall(null);
-        }},
-        { text: 'Terima', onPress: () => {
-          socket.emit('call:answer', { callerId: incomingCall.callerId, answer: true });
-          setIncomingCall(null);
-          navigation.navigate('Chats', {
-            screen: 'Call',
-            params: {
-              type: incomingCall.type || 'voice',
-              targetUser: { id: incomingCall.callerId, displayName: incomingCall.callerDisplayName, avatar: incomingCall.callerAvatar },
-              direction: 'incoming',
-            },
-          });
-        }},
-      ]
-    );
+    
+    navigation.navigate('Chats', {
+      screen: 'Call',
+      params: {
+        type: incomingCall.type || 'voice',
+        targetUser: { id: incomingCall.callerId, displayName: incomingCall.callerDisplayName, avatar: incomingCall.callerAvatar },
+        direction: 'incoming',
+        offer: incomingCall.offer,
+        autoAccept: false,
+      },
+    });
+    setIncomingCall(null);
   }, [incomingCall]);
 
   return null;
@@ -176,6 +167,18 @@ function getTabBarStyle(route, colors, mode) {
   
   if (hiddenRoutes.includes(routeName)) {
     return { display: 'none' };
+  }
+
+  if (Platform.OS === 'ios') {
+    return {
+      backgroundColor: colors.tabBar,
+      borderTopWidth: 1,
+      borderTopColor: colors.tabBarBorder,
+      height: 88, // iOS standard with home indicator
+      paddingBottom: 28,
+      paddingTop: 8,
+      position: 'absolute',
+    };
   }
 
   return {
@@ -205,6 +208,11 @@ function MainTabs() {
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textTertiary,
         tabBarStyle: getTabBarStyle(route, colors, mode),
+        tabBarBackground: () => (
+          Platform.OS === 'ios' ? (
+            <BlurView tint={mode === 'dark' ? 'dark' : 'light'} intensity={80} style={{ flex: 1 }} />
+          ) : null
+        ),
         tabBarLabelStyle: { fontSize: 11, fontWeight: '700', letterSpacing: 0.2 },
         tabBarItemStyle: { borderRadius: 16 },
       })}

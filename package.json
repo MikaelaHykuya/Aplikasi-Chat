@@ -15,9 +15,9 @@
     "expo-audio": "~1.1.1",
     "expo-av": "~16.0.8",
     "expo-blur": "~15.0.8",
+    "expo-build-properties": "~1.0.10",
     "expo-camera": "~17.0.10",
     "expo-clipboard": "~8.0.8",
-    "expo-dev-client": "~6.0.21",
     "expo-document-picker": "~14.0.8",
     "expo-file-system": "~19.0.23",
     "expo-haptics": "~15.0.8",
@@ -34,7 +34,8 @@
     "react-native-screens": "~4.16.0",
     "react-native-webrtc": "^124.0.7",
     "react-native-webview": "13.15.0",
-    "socket.io-client": "^4.8.3"
+    "socket.io-client": "^4.8.3",
+    "whatwg-url-without-unicode": "^8.0.0-3"
   },
   "scripts": {
     "start": "expo start",
