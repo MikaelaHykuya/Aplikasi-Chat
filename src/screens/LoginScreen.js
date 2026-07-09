@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   KeyboardAvoidingView, Platform, Alert, ActivityIndicator,
-  Dimensions, Animated
+  Dimensions, Animated, ScrollView
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -62,84 +62,87 @@ export default function LoginScreen({ navigation }) {
       <View style={styles.circle1} />
       <View style={styles.circle2} />
 
-      {/* Logo area */}
-      <View style={styles.logoArea}>
-        <View style={styles.logoGlass}>
-          <Text style={styles.logoChar}>Z</Text>
-        </View>
-        <Text style={styles.appName}>Zentro</Text>
-        <Text style={styles.tagline}>Ajak teman, ngobrol seru ✨</Text>
-      </View>
-
-      {/* Form card */}
-      <Animated.View style={[styles.card, { transform: [{ translateX: shakeAnim }] }]}>
-        <Text style={styles.cardTitle}>Masuk ke akun</Text>
-
-        {/* Username */}
-        <View style={[
-          styles.inputWrap,
-          focused === 'username' && styles.inputWrapFocused
-        ]}>
-          <Ionicons name="person-outline" size={18} color={focused === 'username' ? '#6C63FF' : '#B0B0BA'} style={styles.icon} />
-          <TextInput
-            style={styles.input}
-            placeholder="Username atau Email"
-            placeholderTextColor="#B0B0BA"
-            value={username}
-            onChangeText={setUsername}
-            autoCapitalize="none"
-            onFocus={() => setFocused('username')}
-            onBlur={() => setFocused(null)}
-          />
+      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+        {/* Logo area */}
+        <View style={styles.logoArea}>
+          <View style={styles.logoGlass}>
+            <Text style={styles.logoChar}>Z</Text>
+          </View>
+          <Text style={styles.appName}>Zentro</Text>
+          <Text style={styles.tagline}>Ajak teman, ngobrol seru ✨</Text>
         </View>
 
-        {/* Password */}
-        <View style={[
-          styles.inputWrap,
-          focused === 'password' && styles.inputWrapFocused
-        ]}>
-          <Ionicons name="lock-closed-outline" size={18} color={focused === 'password' ? '#6C63FF' : '#B0B0BA'} style={styles.icon} />
-          <TextInput
-            style={styles.input}
-            placeholder="Password"
-            placeholderTextColor="#B0B0BA"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry={!showPw}
-            onFocus={() => setFocused('password')}
-            onBlur={() => setFocused(null)}
-          />
-          <TouchableOpacity onPress={() => setShowPw(!showPw)} style={styles.eyeBtn}>
-            <Ionicons name={showPw ? 'eye-off-outline' : 'eye-outline'} size={18} color="#B0B0BA" />
+        {/* Form card */}
+        <Animated.View style={[styles.card, { transform: [{ translateX: shakeAnim }] }]}>
+          <Text style={styles.cardTitle}>Masuk ke akun</Text>
+
+          {/* Username */}
+          <View style={[
+            styles.inputWrap,
+            focused === 'username' && styles.inputWrapFocused
+          ]}>
+            <Ionicons name="person-outline" size={18} color={focused === 'username' ? '#6C63FF' : '#B0B0BA'} style={styles.icon} />
+            <TextInput
+              style={styles.input}
+              placeholder="Username atau Email"
+              placeholderTextColor="#B0B0BA"
+              value={username}
+              onChangeText={setUsername}
+              autoCapitalize="none"
+              onFocus={() => setFocused('username')}
+              onBlur={() => setFocused(null)}
+            />
+          </View>
+
+          {/* Password */}
+          <View style={[
+            styles.inputWrap,
+            focused === 'password' && styles.inputWrapFocused
+          ]}>
+            <Ionicons name="lock-closed-outline" size={18} color={focused === 'password' ? '#6C63FF' : '#B0B0BA'} style={styles.icon} />
+            <TextInput
+              style={styles.input}
+              placeholder="Password"
+              placeholderTextColor="#B0B0BA"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={!showPw}
+              onFocus={() => setFocused('password')}
+              onBlur={() => setFocused(null)}
+            />
+            <TouchableOpacity onPress={() => setShowPw(!showPw)} style={styles.eyeBtn}>
+              <Ionicons name={showPw ? 'eye-off-outline' : 'eye-outline'} size={18} color="#B0B0BA" />
+            </TouchableOpacity>
+          </View>
+
+          {/* Login button */}
+          <TouchableOpacity onPress={handleLogin} disabled={loading} activeOpacity={0.85} style={styles.btnWrap}>
+            <LinearGradient
+              colors={['#6C63FF', '#4ECDC4']}
+              start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+              style={styles.btn}
+            >
+              {loading
+                ? <ActivityIndicator color="#fff" />
+                : <Text style={styles.btnText}>Masuk →</Text>}
+            </LinearGradient>
           </TouchableOpacity>
-        </View>
 
-        {/* Login button */}
-        <TouchableOpacity onPress={handleLogin} disabled={loading} activeOpacity={0.85} style={styles.btnWrap}>
-          <LinearGradient
-            colors={['#6C63FF', '#4ECDC4']}
-            start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-            style={styles.btn}
-          >
-            {loading
-              ? <ActivityIndicator color="#fff" />
-              : <Text style={styles.btnText}>Masuk →</Text>}
-          </LinearGradient>
-        </TouchableOpacity>
-
-        {/* Register link */}
-        <TouchableOpacity onPress={() => navigation.navigate('Register')} style={styles.linkWrap}>
-          <Text style={styles.linkText}>
-            Belum punya akun? <Text style={styles.linkAccent}>Daftar sekarang</Text>
-          </Text>
-        </TouchableOpacity>
-      </Animated.View>
+          {/* Register link */}
+          <TouchableOpacity onPress={() => navigation.navigate('Register')} style={styles.linkWrap}>
+            <Text style={styles.linkText}>
+              Belum punya akun? <Text style={styles.linkAccent}>Daftar sekarang</Text>
+            </Text>
+          </TouchableOpacity>
+        </Animated.View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
+  scrollContent: { flexGrow: 1, justifyContent: 'space-between' },
   circle1: {
     position: 'absolute', width: W * 0.7, height: W * 0.7, borderRadius: W * 0.35,
     backgroundColor: 'rgba(255,255,255,0.06)', top: -W * 0.2, right: -W * 0.15,
