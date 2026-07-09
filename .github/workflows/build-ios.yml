@@ -1,0 +1,56 @@
+name: Build Unsigned iOS IPA
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install --legacy-peer-deps
+
+      - name: Prebuild iOS
+        run: npx expo prebuild -p ios --clean
+
+      - name: Install CocoaPods
+        run: |
+          cd ios
+          pod install
+
+      - name: Build iOS App (Unsigned)
+        run: |
+          cd ios
+          xcodebuild -workspace Zentro.xcworkspace \
+            -scheme Zentro \
+            -configuration Release \
+            -sdk iphoneos \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            -derivedDataPath ../build
+
+      - name: Package IPA
+        run: |
+          mkdir -p Payload
+          mv build/Build/Products/Release-iphoneos/Zentro.app Payload/
+          zip -r Zentro.ipa Payload
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Zentro-iOS-App
+          path: Zentro.ipa
