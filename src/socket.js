@@ -272,6 +272,7 @@ function setupSocket(io) {
 
     // --- Call signaling ---
     socket.on('call:offer', (data) => {
+      console.log('Received call:offer from', userId, 'to', data.targetId || data.calleeId);
       const targetId = data.targetId || data.calleeId;
       const offer = data.offer;
       const type = data.type || 'voice';
@@ -292,6 +293,7 @@ function setupSocket(io) {
     });
 
     socket.on('call:answer', (data) => {
+      console.log('Received call:answer from', userId, 'to caller', data.callerId);
       const { callerId, answer } = data;
       const callerSocket = onlineUsers.get(callerId);
       if (callerSocket) {

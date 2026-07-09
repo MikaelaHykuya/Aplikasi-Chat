@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <style>
+    body, html { margin: 0; padding: 0; background: transparent; width: 100%; height: 100%; overflow: hidden; display: flex; justify-content: center; align-items: center; }
+    video { object-fit: cover; }
+    #remoteVideo { width: 100%; height: 100%; position: absolute; top: 0; left: 0; background: #000; }
+    #localVideo { width: 110px; height: 150px; position: absolute; bottom: 120px; right: 20px; border-radius: 12px; border: 2px solid rgba(255,255,255,0.3); z-index: 10; background: #222; }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <video id="remoteVideo" autoplay playsinline class="hidden"></video>
+  <video id="localVideo" autoplay playsinline muted class="hidden"></video>
+
+  <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const type = urlParams.get('type');
+    const isVideo = type === 'video';
+
+    let localStream;
+    let peerConnection;
+
+    const localVideo = document.getElementById('localVideo');
+    const remoteVideo = document.getElementById('remoteVideo');
+
+    const config = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+
+    let messageQueue = [];
+    function sendToRN(type, payload) {
+      const msg = JSON.stringify({ type, payload });
+      if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
+        window.ReactNativeWebView.postMessage(msg);
+      } else {
+        messageQueue.push(msg);
+      }
+    }
+
+    // Flush queue when injected
+    setInterval(() => {
+      if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage && messageQueue.length > 0) {
+        const queue = [...messageQueue];
+        messageQueue = [];
+        queue.forEach(m => window.ReactNativeWebView.postMessage(m));
+      }
+    }, 500);
+
+    async function init() {
+      if (isVideo) {
+        localVideo.classList.remove('hidden');
+        remoteVideo.classList.remove('hidden');
+      }
+
+      try {
+        localStream = await navigator.mediaDevices.getUserMedia({
+          video: isVideo,
+          audio: true
+        });
+        if (isVideo) {
+          localVideo.srcObject = localStream;
+        }
+      } catch (err) {
+        sendToRN('error', err.toString());
+      }
+
+      peerConnection = new RTCPeerConnection(config);
+      if (localStream) {
+        localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+      }
+
+      peerConnection.ontrack = (event) => {
+        if (remoteVideo.srcObject !== event.streams[0]) {
+          remoteVideo.srcObject = event.streams[0];
+        }
+      };
+
+      peerConnection.onicecandidate = (event) => {
+        if (event.candidate) {
+          sendToRN('candidate', event.candidate);
+        }
+      };
+
+      sendToRN('ready', null);
+    }
+
+    function handleMessage(event) {
+       try {
+         const msg = JSON.parse(event.data);
+         if (msg.type === 'create_offer') {
+            peerConnection.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: isVideo }).then(offer => {
+              return peerConnection.setLocalDescription(offer).then(() => {
+                sendToRN('offer', offer);
+              });
+            }).catch(e => sendToRN('error', 'Offer Error: ' + e.toString()));
+         } else if (msg.type === 'handle_offer') {
+            peerConnection.setRemoteDescription(new RTCSessionDescription(msg.payload)).then(() => {
+              return peerConnection.createAnswer();
+            }).then(answer => {
+              return peerConnection.setLocalDescription(answer).then(() => {
+                sendToRN('answer', answer);
+              });
+            });
+         } else if (msg.type === 'handle_answer') {
+            peerConnection.setRemoteDescription(new RTCSessionDescription(msg.payload));
+         } else if (msg.type === 'handle_candidate') {
+            peerConnection.addIceCandidate(new RTCIceCandidate(msg.payload));
+         }
+       } catch (e) {
+         sendToRN('error', e.toString());
+       }
+    }
+    
+    window.addEventListener('message', handleMessage);
+    document.addEventListener('message', handleMessage);
+
+    document.addEventListener("DOMContentLoaded", init);
+  </script>
+</body>
+</html>

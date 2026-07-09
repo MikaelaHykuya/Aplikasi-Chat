@@ -27,6 +27,7 @@ const io = new Server(server, {
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
+app.use(express.static(path.join(__dirname, '..', 'public')));
 
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
@@ -43,3 +44,4 @@ const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`Server berjalan di port ${PORT}`);
 });
+// Trigger nodemon
